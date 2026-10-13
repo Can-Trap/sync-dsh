@@ -1,0 +1,23 @@
+# Line endings are load-bearing here, not cosmetic.
+#
+# test/deploy.test.js asserts an agent body matches /^---\n/ — front-matter
+# detection. With core.autocrlf=true (the Windows default) a checkout rewrites
+# that to `---\r\n` and the assertion fails, so the suite passes on Linux CI and
+# fails on every Windows machine. Upstream has no .gitattributes, which is why
+# that test is red on Windows and green in CI.
+#
+# Force LF in the working tree, everywhere, so the tests mean the same thing on
+# every platform. `git add --renormalize .` after changing this file.
+* text=auto eol=lf
+
+# Genuinely binary — never touched.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.webp binary
+*.gif  binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
+*.zip  binary
+*.gz   binary

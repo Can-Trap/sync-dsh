@@ -1,0 +1,24 @@
+// sync-od — phase pipeline (forward: codebase -> Open Design)
+// render: dot -Tsvg workflow.dot -o workflow.svg
+digraph ods_workflow {
+  rankdir=TB;
+  node [shape=box, style="rounded,filled", fillcolor="#f6f6f8", fontname="Inter"];
+  edge [fontname="Inter", fontsize=10];
+
+  bootstrap  [label="00 bootstrap\nods-init.js / ods-status.js"];
+  detect     [label="01 detect\nods-detect.js -> signals.json"];
+  extract    [label="02 extract\nods-extract-tokens.js -> tokens.json\n(light + dark)"];
+  ds         [label="03 design-system\nods-build-design-system.js\nDESIGN.md + tokens.json"];
+  project    [label="04 project (agent/MCP)\ncreate_project -> resolvedDir + previewUrl", fillcolor="#fef3e2"];
+  push       [label="05 push\nods-push.js src -> project dir + entry"];
+  render     [label="07 render\nods-render.js (OD-safe: inline css,\nstrip js, fix links, ODS_RUNTIME)"];
+  verify     [label="08 verify\nods-verify.js: links/nav/effects/theme/od-safe", fillcolor="#e6f4ea"];
+  sync       [label="09 sync\nods-manifest.js drift + ods-pull.js", shape=box];
+  done       [label="DONE", shape=doublecircle, fillcolor="#e6f4ea"];
+
+  bootstrap -> detect -> extract -> ds -> project -> push -> render -> verify;
+  verify -> done [label="all checks pass"];
+  verify -> render [label="od-safe/theme/effects fails", style=dashed, color="#c0392b"];
+  done -> sync [label="ongoing", style=dotted];
+  ds -> project [style=invis]; // keep DS before project rank
+}

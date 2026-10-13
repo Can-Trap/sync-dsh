@@ -1,0 +1,26 @@
+// sync-od — the ongoing push/pull/drift re-anchor loop (both ways)
+// render: dot -Tsvg sync-loop.dot -o sync-loop.svg
+digraph ods_sync_loop {
+  rankdir=LR;
+  node [shape=box, style="rounded,filled", fillcolor="#f6f6f8", fontname="Inter"];
+  edge [fontname="Inter", fontsize=10];
+
+  source   [label="codebase\n(source of truth: tokens/components)", fillcolor="#eef2ff"];
+  manifest [label="manifest.json\npairs [{src, od, srcHash, odHash}]", shape=box];
+  od       [label="Open Design\nproject + design-system", fillcolor="#fef3e2"];
+  drift    [label="drift?\nods-manifest.js drift", shape=diamond, fillcolor="#fff8e1"];
+
+  // forward: source -> OD
+  source -> od [label="push / render\n(ods-push, ods-render)"];
+  source -> manifest [label="ods-manifest.js add --pair", style=dotted];
+  od     -> manifest [style=dotted];
+
+  // backward: OD -> source (review gated)
+  od -> source [label="pull (review, exit 2)\nods-pull.js --apply -> managed block", color="#2e7d32"];
+
+  // drift re-anchors the pair
+  manifest -> drift;
+  drift -> source [label="src:true -> re-run forward\nextract/build/push/render/verify", style=dashed];
+  drift -> od     [label="od:true -> pull (review)", style=dashed, color="#2e7d32"];
+  drift -> manifest [label="clean (exit 0) -> re-anchor", color="#2e7d32"];
+}

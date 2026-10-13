@@ -1,0 +1,33 @@
+// sync-od — decision diamonds: what to build, and which way to sync
+// render: dot -Tsvg decision-tree.dot -o decision-tree.svg
+digraph ods_decisions {
+  rankdir=TB;
+  node [fontname="Inter"];
+  edge [fontname="Inter", fontsize=10];
+  diamond [shape=diamond, style=filled, fillcolor="#fff8e1"];
+  action  [shape=box, style="rounded,filled", fillcolor="#e6f4ea"];
+
+  start [label="start run", shape=oval, style=filled, fillcolor="#eef2ff"];
+
+  q_what   [shape=diamond, style=filled, fillcolor="#fff8e1", label="DS / project / both?"];
+  a_ds     [shape=box, style="rounded,filled", fillcolor="#e6f4ea", label="DS only\n03 build design-system\n(reusable tokens/contract)"];
+  a_proj   [shape=box, style="rounded,filled", fillcolor="#e6f4ea", label="project only\n04-07 push + render\n(existing DS reused)"];
+  a_both   [shape=box, style="rounded,filled", fillcolor="#e6f4ea", label="BOTH (default)\n03 build DS + 04-07 project"];
+
+  start -> q_what;
+  q_what -> a_ds   [label="tokens matter, no viewable app"];
+  q_what -> a_proj [label="DS already exists in OD"];
+  q_what -> a_both [label="codebase has tokens AND UI"];
+
+  q_drift  [shape=diamond, style=filled, fillcolor="#fff8e1", label="OD changed or clean?\nods-manifest.js drift"];
+  a_clean  [shape=box, style="rounded,filled", fillcolor="#e6f4ea", label="clean (exit 0)\n-> DONE, re-anchor"];
+  a_src    [shape=box, style="rounded,filled", fillcolor="#e6f4ea", label="src:true\n-> re-run forward pipeline"];
+  a_od     [shape=box, style="rounded,filled", fillcolor="#e6f4ea", label="od:true\n-> pull (review gate, exit 2)"];
+  a_both2  [shape=box, style="rounded,filled", fillcolor="#fdecea", label="both:true\n-> surface conflict, user picks winner"];
+
+  a_ds -> q_drift; a_proj -> q_drift; a_both -> q_drift;
+  q_drift -> a_clean [label="no hash moved"];
+  q_drift -> a_src   [label="source moved"];
+  q_drift -> a_od    [label="OD moved"];
+  q_drift -> a_both2 [label="both moved"];
+}

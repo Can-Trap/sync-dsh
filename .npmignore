@@ -1,0 +1,15 @@
+# Development files (not shipped)
+test/
+tools/
+hooks/
+.reference-private/
+STATE.md
+.eslintrc*
+.prettierrc*
+tsconfig.json
+esbuild.config.mjs
+.gitignore
+.env
+.env.*
+*.log
+node_modules/

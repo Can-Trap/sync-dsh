@@ -1,0 +1,57 @@
+{
+  "name": "@local/sync-dsh",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sync a codebase to Open Design and/or extract its design system, from DeepSeek Harness. Drives the bundled ods-* pipeline, guards secrets, and exposes /sync.",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "icon": "./icon.svg",
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "icon.svg",
+    "locale/*.json",
+    "scripts",
+    "references",
+    "agents",
+    "SKILL.md",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Can-Trap/sync-dsh.git"
+  },
+  "homepage": "https://github.com/Can-Trap/sync-dsh#readme",
+  "bugs": {
+    "url": "https://github.com/Can-Trap/sync-dsh/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "open-design",
+    "design-system",
+    "design-tokens",
+    "sync",
+    "ui-sync"
+  ],
+  "author": "Trap",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

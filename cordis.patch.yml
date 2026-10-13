@@ -1,0 +1,29 @@
+# sync-dsh — codebase → Open Design, from DeepSeek Harness.
+#
+# Row 1 is the plugin itself: the `sync_design` tool, the secret guard on
+# tools/pre-execute, and the `/sync` command.
+#
+# Row 2 is the Open Design MCP server (`od mcp`) as a stdio client. It ships
+# DISABLED because `od` is installed with the Open Design desktop app and is
+# usually not on PATH, and a row whose command cannot be spawned fails
+# activation. The scripts never call MCP — the AGENT does — so enable this row
+# before running a sync, or the pipeline will have nothing to push through:
+#
+#     plugin_manager set_plugin od-mcp enabled:true
+#
+# Its tools then appear as mcp__opendesign__*, which is the surface
+# references/mcp-contract.md names.
+- insert:
+    - id: sync-dsh
+      name: '@local/sync-dsh'
+
+    - id: od-mcp
+      name: '@deepseek-ai/dsh-mcp-client'
+      disabled: true
+      config:
+        serverName: opendesign
+        transport: stdio
+        command: od
+        args:
+          - mcp
+        failOnStartupError: true
