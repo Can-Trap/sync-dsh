@@ -34,15 +34,33 @@ a directory under `projects/` without a DB row will NOT appear in the UI. Timest
 
 ## The agent's MCP tool surface (agent-only, never a script)
 
-**OD MCP (default):**
+**OD MCP (default)** — 22 tools, verified by handshaking with a running daemon over stdio:
+`initialize` answers `{"name":"open-design","version":"0.2.0"}` and `tools/list` returns exactly the
+set below. The six marked ★ were added since the first revision of this document.
+
 - **`create_project` / `get_project`** → the source of `resolvedDir` (on-disk dir) + `previewUrl` (daemon URL
   for the entry) + the raw base (e.g. `/api/projects/<id>/raw`). Phase 04.
 - **`list_projects`** — discover existing projects. · **`get_active_context`** — the project/file open in OD
-  now (many read tools default to it).
+  now (many read tools default to it; it answers `{active:false, hint}` rather than failing).
 - **`get_artifact` / `get_file` / `list_files` / `search_files`** — pull design context back (read side of a
   pull; `get_artifact` returns the entry + referenced siblings in one call).
 - **`write_file` / `create_artifact` / `delete_file` / `delete_project`** — mutate OD directly when the agent
-  (not a script) needs to; prefer the scripts for the push/render pipeline.
+  (not a script) needs to; prefer the scripts for the push/render pipeline. `delete_project` requires an
+  explicit project **and** `confirm: true`, and has no active-project fallback.
+- ★ **`collect_brief` / `confirm_brief`** — the interactive brief card for a new artifact, and the readable
+  brief it returns. It needs a UI, so a headless pipeline run should skip it or pre-supply answers. Mode B
+  (design system) never needs it.
+- ★ **`start_run` / `get_run` / `cancel_run`** — how an OD skill or plugin is actually invoked: `start_run`
+  returns a `runId` immediately, `get_run` polls to `succeeded` and yields a `previewUrl`.
+- ★ **`list_plugins` / `list_skills` / `list_agents`** — discovery for `start_run`. `list_agents` returns
+  only installed agent CLIs unless you pass `includeUnavailable: true`.
+- ★ **`start_vela_login` / `get_vela_login_status`** — OpenDesign Cloud sign-in, when a skill needs it.
+  Exposes no credentials.
+
+**Client resources, alongside the tools.** A connected client also sees the daemon's resource
+catalogue: `ui://open-design/artifact-card-v8.html` (the brief card), `od://focus/active` (the same
+active context as JSON), `od://skills/<id>/SKILL.md`, and — the one Phase 03 and the pull path care
+about — `od://design-systems/<id>/DESIGN.md`.
 
 **DesignSync MCP (if available — provides batch operations):**
 - **`finalize_plan`** → returns a `planId` and presents the upload manifest for one-time approval.
