@@ -186,7 +186,22 @@ async function findOdCli() {
   return null;
 }
 
-/** Is the Open Design MCP server reachable? The desktop app must be running. */
+/**
+ * Is the Open Design MCP server usable?
+ *
+ * Upstream probed with `od mcp list`. **There is no `list` subcommand** — `od mcp`
+ * starts a stdio server and takes only `--daemon-url`, so that call either started
+ * a server and hung until the timeout, or reported the CLI's own crash as a
+ * connectivity failure. Both probes here exit:
+ *
+ *   1. `od mcp --help` proves this build has the MCP subcommand at all.
+ *   2. a daemon-touching command proves the daemon answers. Worth knowing, and
+ *      worth NOT treating as the verdict: `od mcp` proxies to a running daemon,
+ *      and the desktop app binds a fresh high port every launch, so a bare call
+ *      defaulting to 7456 fails with ECONNREFUSED while the app is running fine.
+ *      The MCP row supplies the endpoint that fixes that, and it lives in the
+ *      profile, not here — so its absence is a note, not a failure.
+ */
 async function testOdConnectivity() {
   const cli = await findOdCli();
   if (!cli) {
@@ -198,22 +213,26 @@ async function testOdConnectivity() {
       cli: null,
     };
   }
+  const env = { ...process.env, ...cli.env };
+
   try {
-    const { stdout } = await execFileAsync(cli.exe, [...cli.prefix, "mcp", "list"], {
-      timeout: 8000,
-      env: { ...process.env, ...cli.env },
-    });
-    const hasTools = stdout.includes("open-design") || stdout.includes("od://");
-    return {
-      ok: hasTools,
-      detail: hasTools
-        ? `MCP server reachable via ${cli.label}`
-        : "CLI responded but no OD tools detected — is the desktop app running?",
-      cli,
-    };
+    await execFileAsync(cli.exe, [...cli.prefix, "mcp", "--help"], { timeout: 8000, env });
   } catch (err) {
-    return { ok: false, detail: `od mcp list failed: ${err?.message ?? err}`, cli };
+    return { ok: false, detail: `this build has no \`od mcp\` subcommand (${err?.message ?? err})`, cli };
   }
+
+  let daemon = "daemon answered";
+  try {
+    await execFileAsync(cli.exe, [...cli.prefix, "plugin", "list"], { timeout: 8000, env });
+  } catch (err) {
+    const text = `${err?.stderr ?? ""}${err?.message ?? ""}`;
+    daemon = /ECONNREFUSED/i.test(text)
+      ? "daemon not on its default port — expected for the desktop app; the MCP row's " +
+        "OD_SIDECAR_CLIENT_ENDPOINT is what reaches it"
+      : `daemon probe failed: ${text.trim().split("\n").slice(-2).join(" ").slice(0, 160)}`;
+  }
+
+  return { ok: true, detail: `\`od mcp\` available via ${cli.label} — ${daemon}`, cli };
 }
 
 /* ── the secret guard ─────────────────────────────────────────────────────── */

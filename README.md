@@ -45,16 +45,40 @@ degrades to a warning.
 plugin_manager install_bundle <path-to>/sync-dsh
 ```
 
-Then enable the Open Design MCP server, which ships in the same bundle **disabled** — `od` is
-installed with the Open Design desktop app and is usually not on PATH, and a row whose command
-cannot be spawned fails activation:
+Then wire the Open Design MCP server. This bundle deliberately does **not** ship that row, for two
+reasons that both bite:
 
-```
-plugin_manager set_plugin od-mcp enabled:true
+- **The endpoint is machine-specific.** `od` is not on PATH; the real server is the desktop app's
+  own binary running `daemon-cli.mjs` with `ELECTRON_RUN_AS_NODE=1`. And `od mcp` refuses to start
+  without either `OD_SIDECAR_CLIENT_ENDPOINT` (a named pipe carrying a per-install GUID) or an
+  explicit `--daemon-url` — the app binds a fresh port on every launch. No portable value exists.
+- **`serverName` must be unique across live mcp-client instances**, so two bundles shipping an
+  `opendesign` row collide.
+
+So the row belongs to your **profile** patch, which is local and never published:
+
+```yaml
+- id: opendesign-mcp
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: opendesign
+    transport: stdio
+    command: '<LOCALAPPDATA>\Programs\Open Design\Open Design.exe'
+    args:
+      - '<LOCALAPPDATA>\Programs\Open Design\resources\app\prebundled\daemon\daemon-cli.mjs'
+      - 'mcp'
+    env:
+      ELECTRON_RUN_AS_NODE: '1'
+      OD_DATA_DIR: '<APPDATA>\Open Design\namespaces\<namespace>\data'
+      OD_SIDECAR_CLIENT_ENDPOINT: '\\.\pipe\open-design-sidecar-<guid>'
+      OD_MCP_BOOTSTRAP_COMMAND: '<LOCALAPPDATA>\Programs\Open Design\Open Design.exe'
+      OD_MCP_BOOTSTRAP_ARGS: '["--headless"]'
+    failOnStartupError: true
 ```
 
-Its tools then appear as `mcp__opendesign__*`. Without it the pipeline can still detect, extract,
-build and validate, but there is nothing to push through.
+Take `<namespace>` and `<guid>` from the registration the Open Design app writes for VS Code. Its
+tools then appear as `mcp__opendesign__*`. Without the row the pipeline can still detect, extract,
+build and validate — the scripts need no MCP — but there is nothing to push through.
 
 ## Use
 

@@ -1,29 +1,43 @@
 # sync-dsh — codebase → Open Design, from DeepSeek Harness.
 #
-# Row 1 is the plugin itself: the `sync_design` tool, the secret guard on
+# One row: the plugin itself — the `sync_design` tool, the secret guard on
 # tools/pre-execute, and the `/sync` command.
 #
-# Row 2 is the Open Design MCP server (`od mcp`) as a stdio client. It ships
-# DISABLED because `od` is installed with the Open Design desktop app and is
-# usually not on PATH, and a row whose command cannot be spawned fails
-# activation. The scripts never call MCP — the AGENT does — so enable this row
-# before running a sync, or the pipeline will have nothing to push through:
+# This bundle deliberately does NOT ship the Open Design MCP client row, for two
+# reasons that both bite:
 #
-#     plugin_manager set_plugin od-mcp enabled:true
+#   1. The endpoint is machine-specific. `od mcp` refuses to start without either
+#      `OD_SIDECAR_CLIENT_ENDPOINT` (a named pipe carrying a per-install GUID) or
+#      `--daemon-url` (a port that changes on every launch). No portable value
+#      exists to commit.
+#   2. `serverName` must be unique across live mcp-client instances. Two bundles
+#      shipping an `opendesign` row collide — which is exactly what happened when
+#      this one and handoff-dsh both did.
 #
-# Its tools then appear as mcp__opendesign__*, which is the surface
-# references/mcp-contract.md names.
+# So the row belongs to the PROFILE patch, which is local and never published.
+# The scripts need no MCP to detect, extract, build or validate; the agent needs
+# it to push and pull. Wire it once:
+#
+#   - id: opendesign-mcp
+#     name: '@deepseek-ai/dsh-mcp-client'
+#     config:
+#       serverName: opendesign
+#       transport: stdio
+#       command: '<LOCALAPPDATA>\Programs\Open Design\Open Design.exe'
+#       args:
+#         - '<LOCALAPPDATA>\Programs\Open Design\resources\app\prebundled\daemon\daemon-cli.mjs'
+#         - 'mcp'
+#       env:
+#         ELECTRON_RUN_AS_NODE: '1'
+#         OD_DATA_DIR: '<APPDATA>\Open Design\namespaces\<namespace>\data'
+#         OD_SIDECAR_CLIENT_ENDPOINT: '\\.\pipe\open-design-sidecar-<guid>'
+#         OD_MCP_BOOTSTRAP_COMMAND: '<LOCALAPPDATA>\Programs\Open Design\Open Design.exe'
+#         OD_MCP_BOOTSTRAP_ARGS: '["--headless"]'
+#       failOnStartupError: true
+#
+# `<guid>` and `<namespace>` come from the registration the Open Design app writes
+# for VS Code (the app's own MCP/"refresh registration" action). Its tools then
+# appear as mcp__opendesign__*, the surface references/mcp-contract.md names.
 - insert:
     - id: sync-dsh
       name: '@local/sync-dsh'
-
-    - id: od-mcp
-      name: '@deepseek-ai/dsh-mcp-client'
-      disabled: true
-      config:
-        serverName: opendesign
-        transport: stdio
-        command: od
-        args:
-          - mcp
-        failOnStartupError: true
