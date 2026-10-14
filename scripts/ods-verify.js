@@ -1,5 +1,5 @@
 // scripts/ods-verify.js
-import { readText, httpGet } from './_lib.js';
+import { readText, httpGet, arg } from './_lib.js';
 
 // The four static gates, shared with ods-validate.js (baseDir reserved for callers that resolve links).
 export function runChecks(html, { baseDir } = {}) {
@@ -13,7 +13,6 @@ export function runChecks(html, { baseDir } = {}) {
 
 // CLI
 if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('ods-verify.js')) {
-  const arg = (k) => { const i = process.argv.indexOf(k); return i > -1 ? process.argv[i + 1] : null; };
   const html = readText(arg('--entry-html')) || '';
   const previewUrl = arg('--preview-url');
   const rc = runChecks(html, {});

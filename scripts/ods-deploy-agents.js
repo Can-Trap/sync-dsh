@@ -1,8 +1,7 @@
 // scripts/ods-deploy-agents.js
 import { readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
-import { readText, writeText } from './_lib.js';
-const arg = (k) => { const i = process.argv.indexOf(k); return i > -1 ? process.argv[i + 1] : null; };
+import { readText, writeText, arg } from './_lib.js';
 const HARNESSES = ['claude', 'opencode', 'codex', 'pi', 'devin', 'gemini', 'dsh'];
 const harness = arg('--harness') || 'claude'; const dest = arg('--dest');
 if (!dest) { console.error(`usage: ods-deploy-agents.js --dest <dir> [--harness ${HARNESSES.join('|')}]`); process.exit(2); }

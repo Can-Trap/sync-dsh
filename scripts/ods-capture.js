@@ -2,10 +2,9 @@
 // never styling/pipeline churn. The agent does the looking; this manages the bookkeeping.
 import { existsSync, readdirSync, rmSync, mkdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { readJSON, writeJSON, writeText, pageSlug } from './_lib.js';
+import { readJSON, writeJSON, writeText, pageSlug, arg, hasFlag } from './_lib.js';
 import { KEY_RECIPE, renderHashFor, gradeKeyFrom } from './_hashes.js';
 
-const arg = (k) => { const i = process.argv.indexOf(k); return i > -1 ? process.argv[i + 1] : null; };
 const outArg = arg('--out');
 if (!outArg) { console.error('usage: ods-capture.js --out <dir> [--pages a,b] [--force]'); process.exit(2); }
 const out = resolve(outArg);
@@ -14,7 +13,7 @@ if (!side || typeof side.renderHashes !== 'object' || side.renderHashes == null)
   console.error('✗ capture: missing/invalid _ods_sync.json — run ods-build.js first'); process.exit(2);
 }
 
-const force = process.argv.includes('--force');
+const force = hasFlag('--force');
 const pagesArg = arg('--pages');
 const allPages = Object.keys(side.renderHashes).sort();
 const scope = pagesArg ? allPages.filter((p) => pagesArg.split(',').includes(p)) : allPages;

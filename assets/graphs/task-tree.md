@@ -26,7 +26,7 @@ run
 
 └─ 03 design-system
    Q: does DESIGN.md carry all four capabilities + a theme mechanism?
-   check: node ods-build-design-system.js --id --tokens --config ; DESIGN.md has Color/Links/Navigation/Effects/Theme + data-theme
+   check: node ods-build-design-system.js --id --tokens --config ; DESIGN.md has Color/Links/Navigation/Effects/Theme, Theme section agrees with tokens.json
    ├─ all sections present → note "reload OD to see DS in picker"
    └─ a section missing    → NOT done, re-run
 

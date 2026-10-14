@@ -1,8 +1,7 @@
 // scripts/ods-extract-tokens.js
 import { readdirSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
-import { readText, readJSON, writeJSON } from './_lib.js';
-const arg = (k) => { const i = process.argv.indexOf(k); return i > -1 ? process.argv[i + 1] : null; };
+import { readText, readJSON, writeJSON, arg } from './_lib.js';
 const root = arg('--root') || process.cwd();
 const out = arg('--out') || join(root, '.design-sync', 'tokens.json');
 

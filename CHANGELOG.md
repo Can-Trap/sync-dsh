@@ -6,6 +6,77 @@ The `scripts/` pipeline, most of `references/`, the agent playbooks and the phas
 an earlier MIT-licensed sync plugin, whose notice is reproduced in [`NOTICE`](NOTICE). Entries below
 record what this implementation changed; everything it inherited came across essentially intact.
 
+## Unreleased
+
+### Fixed
+
+- **An unpinned run acted on the wrong directory.** `directoryFor` (and the `/sync` handler) read the
+  session cwd from `exec.agent.meta.cwd`, which no DeepSeek Harness `Agent` has — the seam is
+  `exec.agent.session.header.cwd`, the one `dsh-tool-fs` reads. The lookup therefore always missed and
+  every run fell back to `process.cwd()`: the directory the `dsh` server was launched from, not the
+  one the session is working in. With no explicit `directory`, `status` reported a fresh project and
+  offered to bootstrap `.design-sync/` in the *server's* launch directory. Both call sites now use the
+  real seam, and a test pins it (it fails against the previous code).
+- **The drift check died on a TypeError instead of checking anything.** `ods-manifest.js` read its
+  ledger with `readJSON(mf, { pairs: [] })`, which falls back only when the file is missing or is
+  invalid JSON. A `manifest.json` that *parses* but is not a ledger reached `for (const p of data.pairs)`
+  and threw `data.pairs is not iterable` — the real failure was a stray `{"error":"query_timeout"}` left
+  in a project's `.design-sync/manifest.json`. The loader now validates the shape and exits **2** with
+  `[MANIFEST_CORRUPT]` plus the key it found instead of `pairs`; `{}` and a bare array still read as an
+  empty/pairs ledger. Exit status is now: `0` clean, `1` drift (a vanished file counts, and says
+  `missing`), `2` unusable — so "I could not check" can never read as "nothing changed".
+- **`ods-build-design-system.js` wrote a `DESIGN.md` that lied about the theme.** The Theme section was a
+  fixed template asserting "Light and dark are both defined… `[data-theme-toggle]` … persists to
+  localStorage" for *any* token set, including single-theme ones, and the colour table printed
+  `var(--page)` — an unresolved reference — as if it were a value. Open Design reads `DESIGN.md` as agent
+  instructions, so this actively misled downstream work. The document is now derived: literal colours are
+  swatches, `var(--…)`/lengths/font stacks are labelled as bindings, and the Theme section compares
+  `dark` against `light` — when they are identical or `dark` is absent it says the system is
+  single-theme, that the runtime has nothing to switch to, and that a dark variant must not be invented.
+  Links/Navigation/Effects are labelled as house conventions rather than observations. `test/ds.test.js`
+  was itself pinning the false claim (`assert.match(md, /data-theme/)`), and `references/03-design-system.md`,
+  `SKILL.md`, `references/modes.md`, `references/RUNBOOK.md` and `assets/graphs/task-tree.md` all demanded
+  a `data-theme` reference as a DONE-gate; all six now gate on the Theme section *matching the tokens*,
+  so the next agent cannot "fix" the generator back into lying. The script also warns before replacing a
+  `DESIGN.md` that carries no `> Category: Generated` marker, so a hand-authored system in the OD data
+  root cannot vanish without a word.
+- **`--project` was silently dropped, and a name on record could be reset.** Every ods script parsed
+  arguments with a private `process.argv.indexOf(k)`, which only understands `--key value` split across
+  two array entries. A caller without a shell (a tool passing an `args` array, a `spawn` without
+  `shell: true`, an agent that quoted the whole command line) delivers the command as one entry, the flag
+  is invisible, and the script falls back to its default — which is how a real project came to be named
+  `project`. All 14 scripts now share one `arg()`/`argValue()` in `_lib.js` that reads `--key value`,
+  `--key=value` and a joined quoted entry. `ods-init.js` also treats an explicit `--project` as
+  authoritative on a re-sync (updating `projectName` while preserving `projectId` and every other field),
+  keeps the recorded name when the flag is absent instead of rewriting `STATE.json` from the placeholder,
+  and warns on stderr when it is about to use the generic fallback.
+- **`ods-build.js` demanded a `--config` path the init phase never created.** It now defaults to
+  `<root>/.design-sync/config.json` — the file `ods-init.js` writes — so a bootstrapped repo builds with
+  `--root` and `--out` alone; an explicit `--config` still wins, so `ods-resync.js` and every documented
+  invocation are unchanged. When no config exists anywhere it names the file it looked for and points at
+  `ods-init.js`.
+- **`status` advertised a `projectName` it never used.** The parameter documents itself as the name
+  `ods-init.js` bootstraps with, but the operation only printed a hint — a caller who passed a name got
+  nothing bootstrapped and no record of the name. `status` now runs init on a fresh project when it is
+  given a `projectName`, and still creates nothing when it is given only a `mode`, so a
+  generically-named project is never invented behind the caller's back.
+- **The copy set is now visible before it becomes an upload.** `ods-build.js` reports what it copied
+  (`N pages, M files (X MB)`) and warns twice: `[SRCDIR_UNSET]` when `cfg.srcDir` is absent — the default
+  is the **repo root**, which is how a real project came to copy 15,000+ files, its virtualenv included —
+  and `[BIG_COPY]` above 1,500 files, with the size. Settling `srcDir`/`exclude`/`entry` is now an
+  explicit step in `references/00-bootstrap.md`, `references/05-build.md` and the SKILL.md 05 gate, with
+  the two facts that do the damage spelled out: `exclude` matches **exact basenames at any depth and has
+  no globs**, and all three keys feed the `global` component in `_hashes.js`, so pinning them after a
+  build invalidates every hash and forces a full re-upload.
+
+### Tests
+
+- 134 tests (was 98): the shared argument parser (including a flag hidden inside a joined entry), the
+  ledger's three exit statuses against the exact clobbered file, `--project` in all three spellings, the
+  defaulted build config, the copy-set warnings, the absent/overlapping `dark` set, and the harness
+  bootstrap path. `test/ds.test.js` was rewritten around truthfulness and fails 6-of-8 against the
+  previous generator.
+
 ## 0.1.0
 
 ### Added

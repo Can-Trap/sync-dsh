@@ -1,7 +1,7 @@
 // test/build.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, cpSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -65,4 +65,60 @@ test('build twice → identical _ods_sync.json bytes (determinism)', () => {
   const first = readFileSync(join(t.out, '_ods_sync.json'), 'utf8');
   runBuild(t);
   assert.equal(readFileSync(join(t.out, '_ods_sync.json'), 'utf8'), first);
+});
+
+test('build: --config defaults to the .design-sync/config.json ods-init.js writes', () => {
+  const t = setup();
+  // No --config: the init phase creates exactly this file and never mentions it, so
+  // demanding the flag failed the build on a path the caller was never given.
+  execFileSync('node', [build, '--root', t.root, '--out', t.out]);
+  assert.ok(existsSync(join(t.out, 'index.html')));
+  assert.equal(JSON.parse(readFileSync(join(t.out, '.ods-build-meta.json'), 'utf8')).project, 'fixture');
+});
+
+test('build: with no config anywhere, the error names the file and how to make it', () => {
+  const root = mkdtempSync(join(tmpdir(), 'build-'));
+  let err = null;
+  try { execFileSync('node', [build, '--root', root, '--out', join(root, 'od-bundle')], { stdio: 'pipe' }); }
+  catch (e) { err = e; }
+  assert.ok(err, 'a root with no bootstrapped config must fail loudly');
+  assert.notEqual(err.status, 0);
+  const stderr = String(err.stderr);
+  assert.match(stderr, /\[CONFIG\]/);
+  assert.match(stderr, /ods-init\.js writes \.design-sync\/config\.json/);
+  assert.match(stderr, /--config <path>/, 'the usage line still documents the override');
+});
+
+test('build: an explicit --config still wins over the default', () => {
+  const t = setup();
+  const other = join(t.root, 'config-elsewhere.json');
+  writeFileSync(other, JSON.stringify({ projectName: 'explicit', srcDir: '.' }));
+  execFileSync('node', [build, '--config', other, '--root', t.root, '--out', t.out]);
+  assert.equal(JSON.parse(readFileSync(join(t.out, '.ods-build-meta.json'), 'utf8')).project, 'explicit');
+});
+
+/* ── the copy set IS the upload: it has to be deliberate ──────────────────── */
+
+test('build: srcDir left unset warns, because the whole root is about to ship', () => {
+  const t = setup();
+  writeFileSync(t.cfgPath, JSON.stringify({ projectName: 'fixture' }));       // no srcDir
+  const r = spawnSync('node', [build, '--config', t.cfgPath, '--root', t.root, '--out', t.out], { encoding: 'utf8' });
+  assert.equal(r.status, 0, 'the default is still honoured — this is a warning, not a refusal');
+  assert.match(r.stderr, /\[SRCDIR_UNSET\]/);
+  assert.match(r.stderr, /Set srcDir in \.design-sync\/config\.json/);
+});
+
+test('build: a four-figure copy set warns with its size', () => {
+  const t = setup();
+  for (let i = 0; i < 1600; i++) writeFileSync(join(t.root, `bulk-${i}.txt`), 'x');
+  const r = spawnSync('node', [build, '--config', t.cfgPath, '--root', t.root, '--out', t.out], { encoding: 'utf8' });
+  assert.equal(r.status, 0);
+  assert.match(r.stderr, /\[BIG_COPY\] 1\d{3} files/);
+  assert.doesNotMatch(r.stderr, /\[SRCDIR_UNSET\]/, 'srcDir is set here — only the size is wrong');
+});
+
+test('build: the summary reports what the bundle actually contains', () => {
+  const t = setup();
+  const out = execFileSync('node', [build, '--config', t.cfgPath, '--root', t.root, '--out', t.out], { encoding: 'utf8' });
+  assert.match(out, /\[ods\] build: \d+ pages, \d+ files \([\d.]+ MB\)/);
 });

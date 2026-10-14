@@ -1,7 +1,7 @@
 // scripts/ods-render.js
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { readText, writeText } from './_lib.js';
+import { readText, writeText, arg } from './_lib.js';
 
 export const ODS_RUNTIME = `<script>(function(){try{var K='ods-theme',d=document.documentElement,
 t=localStorage.getItem(K)||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
@@ -35,7 +35,6 @@ export function ensureCardMarker(html, rel) {
 
 // CLI
 if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('ods-render.js')) {
-  const arg = (k) => { const i = process.argv.indexOf(k); return i > -1 ? process.argv[i + 1] : null; };
   const dir = arg('--dir'); const base = arg('--base');
   if (dir && base) {
     const walk = (d, a = []) => { for (const n of readdirSync(d)) { const p = join(d, n); statSync(p).isDirectory() ? walk(p, a) : a.push(p); } return a; };

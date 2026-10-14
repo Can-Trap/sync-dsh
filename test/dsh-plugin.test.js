@@ -7,7 +7,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -90,6 +90,54 @@ test("status reads an initialised project's next phase", async () => {
   assert.match(value.nextPhase, /01-detect/);
 });
 
+test("status bootstraps a fresh project when it is given a projectName", async () => {
+  // `projectName` documents itself as the name ods-init.js bootstraps with, so it
+  // must actually do it: printing a hint and dropping the argument is how a real
+  // project ended up named "project" with nothing recording the name asked for.
+  const { tool } = await loadPlugin();
+  const dir = project({ bootstrapped: false });
+  const value = await tool.execute(
+    { operation: "status", directory: dir, projectName: "Stadtwerke FFB Dashboard", mode: "B" }, {});
+
+  assert.equal(value.ok, true);
+  assert.equal(JSON.parse(readFileSync(join(dir, ".design-sync", "config.json"), "utf8")).projectName, "Stadtwerke FFB Dashboard");
+  assert.equal(JSON.parse(readFileSync(join(dir, ".design-sync", "STATE.json"), "utf8")).project, "Stadtwerke FFB Dashboard");
+  assert.match(value.nextPhase, /01-detect/, "the phase comes from the state just seeded");
+  assert.match(value.stdout, /ods-init\.js/);
+});
+
+test("status without a projectName creates nothing", async () => {
+  const { tool } = await loadPlugin();
+  const dir = project({ bootstrapped: false });
+  const value = await tool.execute({ operation: "status", directory: dir, mode: "B" }, {});
+  // A generic name invented behind the caller's back is the defect, not the fix.
+  assert.equal(existsSync(join(dir, ".design-sync")), false);
+  assert.match(value.stdout, /Bootstrap:/);
+  assert.match(value.stdout, /--mode B/);
+});
+
+/* ── which project an unpinned run acts on ────────────────────────────────── */
+
+test("an unpinned run acts on the session workspace, not the server's launch directory", async () => {
+  const { tool, command } = await loadPlugin();
+  const dir = project({ bootstrapped: false });
+
+  // The session cwd is `exec.agent.session.header.cwd` — the same seam
+  // `dsh-tool-fs` reads. Anything else (this used `agent.meta.cwd`, which no
+  // Agent has) silently falls back to `process.cwd()`: the directory the `dsh`
+  // server was launched from, so an unpinned run reports on — and bootstraps —
+  // the wrong project.
+  const agent = { session: { header: { cwd: dir } } };
+  const unpinned = await tool.execute({ operation: "scripts" }, { agent });
+  assert.equal(unpinned.directory, dir, "the tool must default to the session workspace");
+
+  const viaCommand = await command.handler({ rawInput: " scripts", agent });
+  assert.ok(viaCommand.text.includes(dir), `the /sync command must use the session workspace, got: ${viaCommand.text.split("\n")[0]}`);
+
+  // A caller with no agent at all still resolves somewhere real.
+  assert.equal((await tool.execute({ operation: "scripts" }, {})).directory, process.cwd());
+});
+
 /* ── the script-name gate ─────────────────────────────────────────────────── */
 
 test("run refuses anything that is not a bare ods-* script name", async () => {
@@ -115,7 +163,7 @@ test("the guard denies a secret-bearing write inside a sync project", async () =
   const { guard } = await loadPlugin();
   const dir = project({ bootstrapped: true });
   const decision = await guard(
-    { arguments: { file_path: join(dir, "theme.css"), content: SECRET_CONTENT }, agent: { meta: { cwd: dir } } },
+    { arguments: { file_path: join(dir, "theme.css"), content: SECRET_CONTENT }, agent: { session: { header: { cwd: dir } } } },
     allow);
   assert.equal(decision.kind, "deny");
   assert.match(decision.reason, /secret/i);
@@ -126,7 +174,7 @@ test("the guard denies a secret-bearing shell command inside a sync project", as
   const { guard } = await loadPlugin();
   const dir = project({ bootstrapped: true });
   const decision = await guard(
-    { arguments: { command: `curl -H 'authorization: token=abcdefghijklmnopqrstuvwxyz'` }, agent: { meta: { cwd: dir } } },
+    { arguments: { command: `curl -H 'authorization: token=abcdefghijklmnopqrstuvwxyz'` }, agent: { session: { header: { cwd: dir } } } },
     allow);
   assert.equal(decision.kind, "deny");
   assert.match(decision.reason, /command/);
@@ -136,7 +184,7 @@ test("the guard passes clean content through untouched", async () => {
   const { guard } = await loadPlugin();
   const dir = project({ bootstrapped: true });
   const decision = await guard(
-    { arguments: { file_path: join(dir, "theme.css"), content: CLEAN_CONTENT }, agent: { meta: { cwd: dir } } },
+    { arguments: { file_path: join(dir, "theme.css"), content: CLEAN_CONTENT }, agent: { session: { header: { cwd: dir } } } },
     allow);
   assert.equal(decision.kind, "allow", "a clean write must reach the downstream decision");
 });
@@ -147,7 +195,7 @@ test("the guard stays out of projects that are not syncing", async () => {
   // unrelated projects, where a blocked write reads as a harness bug.
   const dir = project({ bootstrapped: false });
   const decision = await guard(
-    { arguments: { file_path: join(dir, "secrets.env"), content: SECRET_CONTENT }, agent: { meta: { cwd: dir } } },
+    { arguments: { file_path: join(dir, "secrets.env"), content: SECRET_CONTENT }, agent: { session: { header: { cwd: dir } } } },
     allow);
   assert.equal(decision.kind, "allow");
 });
@@ -158,7 +206,7 @@ test("the guard finds the sync root from a nested path", async () => {
   const nested = join(dir, "src", "components", "deep");
   mkdirSync(nested, { recursive: true });
   const decision = await guard(
-    { arguments: { file_path: join(nested, "Button.tsx"), content: SECRET_CONTENT }, agent: { meta: { cwd: dir } } },
+    { arguments: { file_path: join(nested, "Button.tsx"), content: SECRET_CONTENT }, agent: { session: { header: { cwd: dir } } } },
     allow);
   assert.equal(decision.kind, "deny", "a .design-sync ancestor arms the guard for its whole subtree");
 });
@@ -169,7 +217,7 @@ test("SYNC_DSH_GUARD=off disarms the guard even inside a sync project", async ()
   process.env.SYNC_DSH_GUARD = "off";
   try {
     const decision = await guard(
-      { arguments: { file_path: join(dir, "theme.css"), content: SECRET_CONTENT }, agent: { meta: { cwd: dir } } },
+      { arguments: { file_path: join(dir, "theme.css"), content: SECRET_CONTENT }, agent: { session: { header: { cwd: dir } } } },
       allow);
     assert.equal(decision.kind, "allow");
   } finally {
@@ -183,7 +231,7 @@ test("SYNC_DSH_GUARD=always restores the upstream unconditional behaviour", asyn
   process.env.SYNC_DSH_GUARD = "always";
   try {
     const decision = await guard(
-      { arguments: { file_path: join(dir, "x.env"), content: SECRET_CONTENT }, agent: { meta: { cwd: dir } } },
+      { arguments: { file_path: join(dir, "x.env"), content: SECRET_CONTENT }, agent: { session: { header: { cwd: dir } } } },
       allow);
     assert.equal(decision.kind, "deny");
   } finally {
@@ -195,7 +243,7 @@ test("the guard ignores calls that carry neither content nor a command", async (
   const { guard } = await loadPlugin();
   const dir = project({ bootstrapped: true });
   for (const args of [{ path: join(dir, "a.txt") }, {}, null, { todos: [{ content: "x", status: "pending" }] }]) {
-    const decision = await guard({ arguments: args, agent: { meta: { cwd: dir } } }, allow);
+    const decision = await guard({ arguments: args, agent: { session: { header: { cwd: dir } } } }, allow);
     assert.equal(decision.kind, "allow", `should pass ${JSON.stringify(args)}`);
   }
 });
@@ -205,14 +253,14 @@ test("the guard ignores calls that carry neither content nor a command", async (
 test("the /sync command answers with a rendered result", async () => {
   const { command } = await loadPlugin();
   const dir = project({ bootstrapped: false });
-  const result = await command.handler({ rawInput: " scripts", agent: { meta: { cwd: dir } } });
+  const result = await command.handler({ rawInput: " scripts", agent: { session: { header: { cwd: dir } } } });
   assert.equal(result.kind, "success");
   assert.match(result.text, /ods-/);
 });
 
 test("the /sync command rejects an unknown verb with an error result", async () => {
   const { command } = await loadPlugin();
-  const result = await command.handler({ rawInput: " teleport", agent: { meta: { cwd: project({ bootstrapped: false }) } } });
+  const result = await command.handler({ rawInput: " teleport", agent: { session: { header: { cwd: project({ bootstrapped: false }) } } } });
   assert.equal(result.kind, "error");
   assert.match(result.text, /unknown/);
 });
@@ -223,7 +271,7 @@ test("the /sync command survives a directory that does not exist", async () => {
   assert.equal(existsSync(missing), false);
   // A throwing handler settles as `kind: 'error'` anyway, but a handler that
   // returns a clean error result keeps the UI honest about what happened.
-  const result = await command.handler({ rawInput: " status", agent: { meta: { cwd: missing } } });
+  const result = await command.handler({ rawInput: " status", agent: { session: { header: { cwd: missing } } } });
   assert.ok(result.kind === "success" || result.kind === "error");
   assert.equal(typeof result.text, "string");
 });

@@ -1,8 +1,7 @@
 // scripts/ods-pull.js
-import { readText, writeText, writeManagedBlock } from './_lib.js';
-const arg = (k) => { const i = process.argv.indexOf(k); return i > -1 ? process.argv[i + 1] : null; };
+import { readText, writeText, writeManagedBlock, arg, hasFlag } from './_lib.js';
 const odFile = arg('--od'); const srcFile = arg('--src'); const name = arg('--name') || 'ods';
-const apply = process.argv.includes('--apply');
+const apply = hasFlag('--apply');
 const odBody = readText(odFile) || '';
 const src = readText(srcFile) || '';
 const next = writeManagedBlock(src, name, odBody);

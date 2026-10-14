@@ -3,11 +3,10 @@
 // re-arm → anchor LAST); the agent runs it via write_file/delete_file, then ods-upload-verify.js checks.
 import { readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { readJSON, writeJSON } from './_lib.js';
+import { readJSON, writeJSON, arg } from './_lib.js';
 import { renderHashFor } from './_hashes.js';
 import { validSidecar } from './ods-validate.js';
 
-const arg = (k) => { const i = process.argv.indexOf(k); return i > -1 ? process.argv[i + 1] : null; };
 
 const outArg = arg('--out');
 if (!outArg) { console.error('usage: ods-upload-plan.js --out <dir> [--diff <path>] [--project <id>]'); process.exit(2); }

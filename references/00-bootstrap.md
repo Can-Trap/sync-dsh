@@ -28,10 +28,17 @@ the previous agent's debugging receipts; a warn already listed there is triaged,
    ```
    node <skill>/scripts/ods-init.js --project <name>
    ```
-   It: settles config (creates `{projectName}` or preserves the existing file — never drops
+   It: settles config (creates `{projectName}`, or preserves the existing file — never drops
    `projectId`), seeds `NOTES.md`/`MAP.md`/`JOURNAL.md`/`tasks/INDEX.md`, writes
    `STATE.json = {project, createdAt}` (existing `createdAt` kept), and applies the gitignore
    split below (replacing any old blanket `/.design-sync/` line).
+
+   `--project` is **authoritative**: on a re-sync it updates `projectName` (a correction is a
+   durable-set write — see the rule below), while every other field, `projectId` included, is left
+   alone. Omitted, the name already on record is kept — it is never reset to a placeholder. If
+   there is no name on record either, init says so on stderr before falling back to `project`,
+   because a generic name is almost always an argument that got dropped. Spell it `--project <name>`,
+   `--project=<name>`, or as one quoted command-line string; all three are read.
 2. **Status** — rehydrate and get the next task:
    ```
    node <skill>/scripts/ods-status.js
@@ -65,6 +72,13 @@ od-bundle/
 not at close-out. If it maps to a config field (`exclude`, `entry`, `overrides.<page>.thinOk`, a
 different `projectName`, …) → write it to `config.json`. Anything else → a bullet in `NOTES.md`.
 A correction that lives only in conversation context is lost on the next compaction.
+
+**Settle the copy set during 00/01, before the first build.** `srcDir`, `exclude` and `entry` decide
+what actually ships (the copy set IS the upload), and `_hashes.js` folds all three into its `global`
+hash — so pinning them later invalidates every hash and forces a full re-upload. An absent `srcDir`
+means the **repo root**, which happily ships virtualenvs, backups and data dumps; `exclude` matches
+**exact basenames at any depth and has no globs**; an `entry` left at its default makes validate check
+the build's placeholder instead of the real home page. Table in `references/05-build.md`.
 
 ## DONE-gate
 

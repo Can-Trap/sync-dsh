@@ -98,10 +98,20 @@ function listScripts() {
 
 /* ── locating the project ─────────────────────────────────────────────────── */
 
-/** The directory the run acts on: explicit argument, else the session cwd. */
+/**
+ * The directory the run acts on: explicit argument, else the session's own
+ * workspace.
+ *
+ * The session cwd lives at `exec.agent.session.header.cwd` — the seam
+ * `dsh-tool-fs` reads for exactly this reason. This used to read
+ * `exec.agent.meta.cwd`, which no Agent has, so the lookup always missed and
+ * every run silently defaulted to `process.cwd()`: the directory the `dsh`
+ * server was launched from, not the one the session is working in. An
+ * unpinned `status` then bootstrapped `.design-sync/` in the wrong project.
+ */
 function directoryFor(exec, explicit) {
   if (typeof explicit === "string" && explicit.trim()) return resolve(explicit);
-  const fromSession = exec?.agent?.meta?.cwd;
+  const fromSession = exec?.agent?.session?.header?.cwd;
   if (typeof fromSession === "string" && fromSession) return fromSession;
   return process.cwd();
 }
@@ -335,7 +345,9 @@ function syncTool() {
         },
         projectName: {
           type: "string",
-          description: "For `status` on a fresh project: the name ods-init.js should bootstrap.",
+          description:
+            "For `status` on a fresh project: bootstraps it under this name (runs ods-init.js). " +
+            "Without it, a fresh project is only reported — nothing is created.",
         },
         mode: {
           type: "string",
@@ -415,8 +427,23 @@ function syncTool() {
       }
 
       // operation === "status" — Step A of the RE-ANCHOR RITUAL.
-      const initialised = existsSync(join(directory, STATE_DIR));
+      const wasFresh = !existsSync(join(directory, STATE_DIR));
       const conn = await testOdConnectivity();
+
+      // `projectName` documents itself as "the name ods-init.js should bootstrap",
+      // so bootstrap with it. Printing a hint and ignoring the argument is how a
+      // fresh project ends up named `project` with nothing anywhere recording the
+      // name the caller actually asked for. `mode` alone still bootstraps nothing:
+      // a caller who passes only a mode must not get a generically-named project
+      // created behind its back.
+      const bootstrap = wasFresh && typeof argv.projectName === "string" && argv.projectName.trim()
+        ? await runScript(
+            "ods-init.js",
+            ["--project", argv.projectName, "--mode", argv.mode ?? "both"],
+            directory,
+            exec?.signal)
+        : null;
+
       const status = await runScript("ods-status.js", [], directory, exec?.signal);
 
       const raw = `${status.stdout}${status.stderr}`;
@@ -426,12 +453,19 @@ function syncTool() {
         "";
 
       const lines = [`Open Design: ${conn.ok ? conn.detail : `unreachable — ${conn.detail}`}`];
-      if (!initialised) {
-        const mode = argv.mode ?? "both";
-        const project = argv.projectName ?? "synced-project";
+      if (bootstrap) {
+        const initRaw = `${bootstrap.stdout}${bootstrap.stderr}`.trim();
         lines.push(
           `Fresh project — no ${STATE_DIR}/ here.`,
-          `Bootstrap: node scripts/ods-init.js --project "${project}" --mode ${mode}`,
+          `Bootstrapped: ods-init.js --project "${argv.projectName}" --mode ${argv.mode ?? "both"} (exit ${bootstrap.exitCode}).`,
+          ...(initRaw ? [initRaw] : []),
+          ...(bootstrap.exitCode === 0 ? [] : ["⚠ ods-init.js failed — nothing is set up; see its output above."]),
+        );
+      } else if (wasFresh) {
+        lines.push(
+          `Fresh project — no ${STATE_DIR}/ here.`,
+          `Bootstrap: node scripts/ods-init.js --project "<display name>" --mode ${argv.mode ?? "both"}`,
+          `Call this operation again with \`projectName\` to run that here.`,
         );
       } else {
         const cfg = readConfig(directory);
@@ -441,7 +475,7 @@ function syncTool() {
 
       return {
         ...base,
-        ok: status.exitCode === 0,
+        ok: status.exitCode === 0 && (!bootstrap || bootstrap.exitCode === 0),
         exitCode: status.exitCode,
         stdout: lines.filter(Boolean).join("\n"),
         nextPhase: next,
@@ -496,7 +530,7 @@ export function apply(ctx) {
       if (!known.includes(verb)) {
         return { kind: "error", text: `unknown \`${verb}\` — try one of: ${known.join(", ")}` };
       }
-      const directory = invocation.agent?.meta?.cwd ?? process.cwd();
+      const directory = invocation.agent?.session?.header?.cwd ?? process.cwd();
       try {
         const tool = syncTool();
         const value = await tool.execute({ operation: verb, directory }, { agent: invocation.agent });

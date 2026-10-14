@@ -78,7 +78,8 @@ The SKILL.md DONE boolean has four parts: (1) INDEX all `[x]`, (2) final `ods-re
 (3) `ods-upload-verify.js` exits 0, (4) `ods-manifest.js drift` prints `clean`.
 
 - **Mode B (DS):** only part **(1)** applies, and it reduces to the **03 DONE-gate** — `DESIGN.md` exists at
-  `<odDataRoot>/design-systems/<id>/DESIGN.md` with Color/Links/Navigation/Effects/Theme + `data-theme`, and
+  `<odDataRoot>/design-systems/<id>/DESIGN.md` with Color/Links/Navigation/Effects/Theme and a Theme
+  section that matches `tokens.json` (single-theme said out loud when `dark` mirrors `light`), and
   `tokens.json` sits beside it. Parts 2–4 do not exist (no driver, no upload, no manifest). Close-out = the
   DS-reload caveat + a report; no upload-verify, no commit-offer of a `projectId`.
 - **Mode A (project):** all four parts apply, **minus 03's gate** (03 is skipped). DONE = INDEX all `[x]`

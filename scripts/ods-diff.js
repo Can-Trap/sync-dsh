@@ -1,9 +1,8 @@
 // scripts/ods-diff.js — two-partition diff: verification (what to re-grade) vs upload (what ships).
 // The two partitions are NEVER conflated: uploads always ship full sourceHashes deltas.
 import { resolve, join } from 'node:path';
-import { readText, writeJSON } from './_lib.js';
+import { readText, writeJSON, arg } from './_lib.js';
 
-const arg = (k) => { const i = process.argv.indexOf(k); return i > -1 ? process.argv[i + 1] : null; };
 const isObj = (v) => v != null && typeof v === 'object' && !Array.isArray(v);
 const validSidecar = (s) => isObj(s) && typeof s.styleSha === 'string' && isObj(s.renderHashes) && isObj(s.sourceHashes);
 

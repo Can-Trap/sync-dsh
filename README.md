@@ -92,6 +92,11 @@ On a fresh project that reports the bootstrap command:
 node scripts/ods-init.js --project "My App" --mode both
 ```
 
+`status` runs it for you when you pass a name (`projectName`, optionally `mode`); without a name it
+only reports, and creates nothing. `ods-init.js` reads `--project <name>`, `--project=<name>` and a
+single quoted command-line string identically, and `ods-build.js` defaults `--config` to the
+`.design-sync/config.json` that init writes.
+
 Then work the ritual: `status` names the next phase, you run that phase's script, check its
 DONE-gate, and call `/sync` again. `references/RUNBOOK.md` is the command-per-line runbook;
 `SKILL.md` routes each situation at a `references/NN-*.md` phase.

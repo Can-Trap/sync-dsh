@@ -1,13 +1,14 @@
 // test/state.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync, appendFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const S = new URL('../scripts/', import.meta.url).pathname.replace(/^\//, process.platform === 'win32' ? '' : '/');
-const init = (dir) => execFileSync('node', [join(S, 'ods-init.js'), '--project', 'demo'], { cwd: dir }).toString();
+const initRaw = (dir, ...a) => execFileSync('node', [join(S, 'ods-init.js'), ...a], { cwd: dir }).toString();
+const init = (dir) => initRaw(dir, '--project', 'demo');
 
 test('ods-init creates state, config, notes, gitignore split, index', () => {
   const dir = mkdtempSync(join(tmpdir(), 'ods-'));
@@ -80,4 +81,56 @@ test('default mode is both; every phase 01-09 active except drift-deferred 06', 
   assert.ok(!/skipped: mode/.test(idx));
   assert.match(idx, /- \[ \] 03-design-system/);
   assert.match(idx, /- \[x\] 06-pull \(drift-triggered\)/);
+});
+
+/* ── --project: authoritative, spelled-flexibly, never silently generic ───── */
+
+test('ods-init --project is authoritative on a re-sync, and every other field survives', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ods-'));
+  init(dir);
+  const cfgPath = join(dir, '.design-sync', 'config.json');
+  const cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
+  cfg.projectId = 'od-123';                       // a settled project
+  cfg.exclude = ['e2e'];
+  writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n');
+
+  initRaw(dir, '--project', 'Stadtwerke FFB Dashboard Design System');
+
+  const after = JSON.parse(readFileSync(cfgPath, 'utf8'));
+  assert.equal(after.projectName, 'Stadtwerke FFB Dashboard Design System', 'a name correction must persist');
+  assert.equal(after.projectId, 'od-123', 'never drop the pin');
+  assert.deepEqual(after.exclude, ['e2e'], 'never re-derive a paid-for decision');
+  assert.equal(JSON.parse(readFileSync(join(dir, '.design-sync', 'STATE.json'), 'utf8')).project, 'Stadtwerke FFB Dashboard Design System');
+});
+
+test('ods-init without --project keeps the name on record instead of resetting it', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ods-'));
+  init(dir);
+  initRaw(dir);                                   // re-run that repairs a missing file
+  assert.equal(JSON.parse(readFileSync(join(dir, '.design-sync', 'config.json'), 'utf8')).projectName, 'demo');
+  assert.equal(JSON.parse(readFileSync(join(dir, '.design-sync', 'STATE.json'), 'utf8')).project, 'demo');
+});
+
+test('ods-init reads --project however the caller spelled it', () => {
+  // --project=Name
+  const a = mkdtempSync(join(tmpdir(), 'ods-'));
+  initRaw(a, '--project=Alpha', '--mode=B');
+  const cfgA = JSON.parse(readFileSync(join(a, '.design-sync', 'config.json'), 'utf8'));
+  assert.equal(cfgA.projectName, 'Alpha');
+  assert.equal(cfgA.mode, 'B');
+
+  // One joined argv entry — what a caller without a shell hands over.
+  const b = mkdtempSync(join(tmpdir(), 'ods-'));
+  initRaw(b, '--project "Stadtwerke FFB Dashboard Design System" --mode both');
+  const cfgB = JSON.parse(readFileSync(join(b, '.design-sync', 'config.json'), 'utf8'));
+  assert.equal(cfgB.projectName, 'Stadtwerke FFB Dashboard Design System');
+  assert.equal(cfgB.mode, 'both');
+});
+
+test('ods-init warns rather than silently naming a project "project"', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ods-'));
+  const r = spawnSync('node', [join(S, 'ods-init.js')], { cwd: dir, encoding: 'utf8' });
+  assert.equal(r.status, 0);
+  assert.match(r.stderr, /no --project given/);
+  assert.equal(JSON.parse(readFileSync(join(dir, '.design-sync', 'config.json'), 'utf8')).projectName, 'project');
 });

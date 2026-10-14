@@ -1,8 +1,7 @@
 // scripts/ods-upload-verify.js — post-upload check: the agent-saved OD list_files result
 // vs the executed plan. Pass ⇔ every expectRemote path present AND no plan deletePath survives.
-import { readJSON } from './_lib.js';
+import { readJSON, arg } from './_lib.js';
 
-const arg = (k) => { const i = process.argv.indexOf(k); return i > -1 ? process.argv[i + 1] : null; };
 
 const planPath = arg('--plan'), remotePath = arg('--remote');
 if (!planPath || !remotePath) { console.error('usage: ods-upload-verify.js --plan <path> --remote <saved list_files JSON>'); process.exit(2); }

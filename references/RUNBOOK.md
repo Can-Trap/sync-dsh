@@ -130,8 +130,10 @@ one), wire it via config `readmeHeader`, then:
 node <skill>/scripts/ods-build-design-system.js --id <slug> --tokens .design-sync/tokens.json --name "<Display Name>" --config .design-sync/config.json
 ```
 DONE-gate: `design-systems/<slug>/DESIGN.md` has the headings **Color, Links, Navigation, Effects,
-Theme** + a `data-theme` reference, `tokens.json` sits beside it. Tell the user: **OD loads the DS
-catalog at startup — reload Open Design for the DS to appear in the picker.**
+Theme**, `tokens.json` sits beside it, **and the Theme section agrees with that file** — when `dark` is
+absent or identical to `light` it must say the system is single-theme, because Open Design acts on what
+DESIGN.md claims. Tell the user: **OD loads the DS catalog at startup — reload Open Design for the DS to
+appear in the picker.**
 If the script errors `Open Design data root not found`, pass `--data-root <dir>` (or set `OD_DATA_ROOT`)
 so the DS lands under OD's real data root — never let it fall to a relative path under the repo.
 
@@ -144,7 +146,7 @@ BEFORE any upload, cache holds `projectId/resolvedDir/previewUrl/rawBase`.
 Stage the scripts, then build:
 ```
 node -e "require('fs').cpSync('<skill>/scripts','.ds-sync',{recursive:true})"   # stage scripts; cross-platform (POSIX alt: cp -r <skill>/scripts/. .ds-sync/)
-node .ds-sync/ods-build.js --config .design-sync/config.json --root . --out ./od-bundle --base <rawBase>
+node .ds-sync/ods-build.js --root . --out ./od-bundle --base <rawBase>   # --config defaults to .design-sync/config.json
 ```
 `<rawBase>` = the `rawBase` you cached in Phase 04 (e.g. `/api/projects/<slug>/raw`). If you omit
 `--base`, the script reads `rawBase` from `.design-sync/.cache/od-project.json`. On a RE-SYNC,

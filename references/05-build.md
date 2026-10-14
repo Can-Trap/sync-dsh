@@ -10,10 +10,33 @@ Announce: `Sync-DSH: build — <srcDir> → od-bundle/`.
 Copy the skill's `scripts/` into the repo as `.ds-sync/` and run from there:
 ```
 node -e "require('fs').cpSync('<skill>/scripts','.ds-sync',{recursive:true})"   # cross-platform; POSIX alt: cp -r <skill>/scripts/. .ds-sync/
-node .ds-sync/ods-build.js --config .design-sync/config.json --root <repo> --out ./od-bundle [--base <rawBase>]
+node .ds-sync/ods-build.js --root <repo> --out ./od-bundle [--base <rawBase>] [--config <path>]
 ```
+`--config` defaults to `<root>/.design-sync/config.json` — the file Phase 00 writes — so a
+bootstrapped repo needs only `--root` and `--out`. An explicit `--config` still wins, which is what
+`ods-resync.js` passes.
 On **re-syncs, re-copy first** — a stale stage runs old code against new contracts. No npm install:
 built-ins only. `.ds-sync/` and `od-bundle/` are gitignored (00-bootstrap wrote the lines).
+
+## Shape the copy set BEFORE the first build
+
+The copy set **is** the upload: Open Design receives every non-dot file in `od-bundle/`. So settle
+these three config keys first — and settle them *now*, because `_hashes.js` folds `srcDir`, `exclude`
+and `entry` into its `global` component: changing one after a build invalidates every hash and forces a
+full re-upload.
+
+| Key | What it decides | The trap |
+|---|---|---|
+| `srcDir` | the directory the bundle is copied from | absent ⇒ the **repo root**. That drags in virtualenvs, source backups, data dumps and logs — one real project copied 15,000 files that way. `[SRCDIR_UNSET]` warns. |
+| `exclude` | basenames dropped from the copy | **exact basenames, matched at any depth — there are no globs.** `"latest_data.json"` works; `"*.json"` does nothing. To drop a whole directory, name the directory. |
+| `entry` | the page `ods-validate.js` treats as the entry (default `index.html`) | if the real home page is e.g. `betrieb.html`, say so. Otherwise validate checks a file the build invented, and `[RUNTIME_MISSING]` fires against the placeholder instead of your page. |
+
+When no root `index.html` lands in the copy, the build writes its placeholder page (step 4 below). That
+placeholder is a real page in the bundle and in the upload — name a real `entry`, or provide an index
+deliberately, but do not let it arrive by accident.
+
+`[BIG_COPY]` warns above 1,500 copied files and prints the size. A site bundle is in the hundreds, so a
+four-figure set means `srcDir`/`exclude` are describing something other than the site.
 
 ## Flow (what the script does)
 1. `loadConfig` — strict validation; any config problem is fatal here, not later.
@@ -39,6 +62,14 @@ link rewrites are skipped; render safety still applies).
 | `[CONFIG]` | config missing / bad JSON / unknown key | fix `.design-sync/config.json` (schema in 00-bootstrap) |
 | `[OUT_UNSAFE]` | `--out` is `/`, `$HOME`, cwd, or a non-empty dir without `.ods-build-meta.json` | point `--out` at a fresh or previously-built dir; never at user data |
 | `[ZERO_MATCH]` | `srcDir` missing or the copy produced zero files | fix `cfg.srcDir` / `cfg.exclude` |
+
+Two of these are **warnings** (stderr, exit 0) — the build proceeds, because a large copy set can be
+legitimate, but nothing downstream will ask again:
+
+| Tag | Meaning | Fix |
+|---|---|---|
+| `[SRCDIR_UNSET]` | `cfg.srcDir` is absent, so the whole root is being copied | set `srcDir` to the directory that holds the site |
+| `[BIG_COPY]` | more than 1,500 files copied, with the size | check `cfg.srcDir` and `cfg.exclude` before uploading |
 
 ## `od-bundle/` layout
 Uploaded (every non-dot file): rendered `.html` pages (marker first line), `.css`, assets,

@@ -65,6 +65,84 @@ export function loadConfig(path) {
 
 export const pageSlug = (rel) => rel.replace(/\.html$/, '').replace(/[\\/]/g, '__');
 
+/* ── argument parsing ─────────────────────────────────────────────────────── */
+
+/**
+ * Split ONE argv entry that holds a whole command line into its parts.
+ *
+ * Quotes are honoured and stripped, so `--project "Stadtwerke FFB"` yields the
+ * two tokens `--project` and `Stadtwerke FFB` — the value keeps its spaces.
+ * Backslashes are left alone on purpose: on Windows they are path separators,
+ * not escapes.
+ */
+function splitJoined(s) {
+  const out = [];
+  let cur = '', quote = null;
+  for (const c of s) {
+    if (quote) { if (c === quote) quote = null; else cur += c; continue; }
+    if (c === '"' || c === "'") { quote = c; continue; }
+    if (/\s/.test(c)) { if (cur) { out.push(cur); cur = ''; } continue; }
+    cur += c;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+/**
+ * Every argument this process was given, with joined entries expanded.
+ *
+ * A caller that does not go through a shell — a tool passing an `args` array, a
+ * `spawn` without `shell: true`, an agent that quoted the whole command line —
+ * delivers `--project "Stadtwerke FFB" --mode both` as a SINGLE argv entry. The
+ * previous parser (a bare `process.argv.indexOf(key)`) could not see the flag
+ * inside it and returned null, so the value was silently dropped and the caller
+ * fell back to a default: that is how a real project ended up named `project`.
+ *
+ * `--key=value` is emitted whole (its value may contain spaces); a `--key value`
+ * entry is split, because there the whitespace IS the separator.
+ */
+export function argvTokens(argv = process.argv) {
+  const out = [];
+  for (const raw of argv.slice(2)) {
+    if (typeof raw !== 'string') { out.push(raw); continue; }
+    if (/^--[A-Za-z0-9-]+=/.test(raw)) out.push(raw);
+    else if (/^--[A-Za-z0-9-]+\s/.test(raw)) out.push(...splitJoined(raw));
+    else out.push(raw);
+  }
+  return out;
+}
+
+/**
+ * Read `--key value`, `--key=value` or a joined entry out of an argv array.
+ *
+ * A flag whose value is missing — or whose "value" is the next flag — reads as
+ * null, so a caller can tell "not given" from "given as an empty string".
+ *
+ * @returns the value, or null when the key is absent.
+ */
+export function argValue(argv, key) {
+  const tokens = argvTokens(argv);
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (t === key) {
+      const v = tokens[i + 1];
+      return v === undefined || /^--/.test(v) ? null : v;
+    }
+    if (typeof t === 'string' && t.startsWith(key + '=')) return t.slice(key.length + 1);
+  }
+  return null;
+}
+
+/** `argValue` against this process's own argv — what every ods script uses. */
+export const arg = (key) => argValue(process.argv, key);
+
+/**
+ * Is a value-less flag present? Use this instead of `process.argv.includes(k)`:
+ * the raw array misses a flag that arrived inside a joined entry, so
+ * `--root . --refresh` delivered as one string would silently skip the refresh.
+ */
+export const hasFlag = (key, argv = process.argv) => argvTokens(argv).includes(key);
+
 export function writeManagedBlock(content, name, body) {
   const start = `<!-- design-sync:start:${name} -->`;
   const end = `<!-- design-sync:end:${name} -->`;

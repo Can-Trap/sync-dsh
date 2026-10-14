@@ -47,7 +47,19 @@ don't author state files by hand.
 
 `manifest.json` is the map + drift ledger, shape `{ pairs: [{ src, od, srcHash, odHash }] }`.
 Record with `node <skill>/scripts/ods-manifest.js add --pair <src>::<od>` (it hashes both sides)
-and detect movement with `ods-manifest.js drift` (exit 1 + a list on change).
+and detect movement with `ods-manifest.js drift`.
+
+**Read the exit status, not just the text** — the three outcomes are deliberately distinct:
+
+| Exit | Meaning |
+|------|---------|
+| `0` | `clean` — every tracked pair still hashes as recorded |
+| `1` | **drift** — a side changed, or a tracked file is gone (the line says `missing`) |
+| `2` | the ledger itself is unusable — not JSON, not a ledger, or a one-sided pair. Prints `[MANIFEST_CORRUPT]` and the key it found instead of `pairs` |
+
+A `2` must never be read as `0`: "I could not check" is not "nothing changed". If a stray write
+clobbers `manifest.json` (a failed query once left `{"error":"query_timeout"}` in one), delete the
+file — an absent ledger reads as empty — and re-record the pairs with `add --pair`.
 
 ## The unit of work: one task → one report → flip the box
 
