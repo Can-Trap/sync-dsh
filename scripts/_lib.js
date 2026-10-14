@@ -70,8 +70,8 @@ export const pageSlug = (rel) => rel.replace(/\.html$/, '').replace(/[\\/]/g, '_
 /**
  * Split ONE argv entry that holds a whole command line into its parts.
  *
- * Quotes are honoured and stripped, so `--project "Stadtwerke FFB"` yields the
- * two tokens `--project` and `Stadtwerke FFB` — the value keeps its spaces.
+ * Quotes are honoured and stripped, so `--project "Acme Reporting"` yields the
+ * two tokens `--project` and `Acme Reporting` — the value keeps its spaces.
  * Backslashes are left alone on purpose: on Windows they are path separators,
  * not escapes.
  */
@@ -93,10 +93,11 @@ function splitJoined(s) {
  *
  * A caller that does not go through a shell — a tool passing an `args` array, a
  * `spawn` without `shell: true`, an agent that quoted the whole command line —
- * delivers `--project "Stadtwerke FFB" --mode both` as a SINGLE argv entry. The
+ * delivers `--project "Acme Reporting" --mode both` as a SINGLE argv entry. The
  * previous parser (a bare `process.argv.indexOf(key)`) could not see the flag
  * inside it and returned null, so the value was silently dropped and the caller
- * fell back to a default: that is how a real project ended up named `project`.
+ * fell back to a default: that is how a project ends up named `project` while
+ * the caller passed a proper name.
  *
  * `--key=value` is emitted whole (its value may contain spaces); a `--key value`
  * entry is split, because there the whitespace IS the separator.

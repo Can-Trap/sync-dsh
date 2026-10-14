@@ -27,7 +27,7 @@ Read top to bottom; stop at the first row that matches. Inputs: the **request ph
 | 3 | "sync the codebase", "create/sync an OD project", "push the app/site to Open Design", "make a project", "the pages", "upload the site" | **A** |
 | 4 | "both", "design system and project", "everything", "full sync" | **both** |
 | 5 | request names a project target to adopt/pin, or `config.projectId` exists | **A** (project is already the intent) |
-| 6 | request is only "sync-dsh" / "/sync-dsh" / no task, and no config | **both** (default) |
+| 6 | request is only "sync-dsh" / "/sync" / no task, and no config | **both** (default) |
 | 7 | anything else / ambiguous | **both** (default — never stall to ask; both is the safe superset) |
 
 `config.shape` (`static` / `app`, set by 01-detect) does **not** change the mode — it only tunes how Mode A

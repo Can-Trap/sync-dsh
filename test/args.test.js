@@ -5,8 +5,8 @@
 // array entries. A shell-less caller (a tool passing an `args` array, a `spawn`
 // without a shell, an agent that quoted the whole command line) delivers the same
 // command as ONE entry, and the flag inside it was invisible: the value was dropped
-// and the script fell back to its default. That is how a real project came to be
-// named "project" while the caller passed a proper name.
+// and the script fell back to its default. That is how a project comes to be named
+// "project" while the caller passed a proper name.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { argValue, argvTokens, hasFlag } from '../scripts/_lib.js';
@@ -23,8 +23,8 @@ test('--key=value', () => {
 });
 
 test('a whole command line delivered as one argv entry', () => {
-  const one = '--project "Stadtwerke FFB Dashboard Design System" --mode both';
-  assert.equal(argValue(argv(one), '--project'), 'Stadtwerke FFB Dashboard Design System');
+  const one = '--project "Acme Reporting Dashboard" --mode both';
+  assert.equal(argValue(argv(one), '--project'), 'Acme Reporting Dashboard');
   assert.equal(argValue(argv(one), '--mode'), 'both');
 });
 

@@ -7,8 +7,9 @@
 // paragraph — "Light and dark are both defined… [data-theme-toggle] … persists to
 // localStorage" — describing a mechanism the extracted system did not have, and
 // printed `var(--page)` in a colour table as though an unresolved reference were a
-// value. A real project received a DESIGN.md asserting a dark theme it had never
-// defined. Both claims are now DERIVED from `tokens.json`, or reported as unknown.
+// value. A single-theme system could therefore be handed a DESIGN.md asserting a
+// dark theme it had never defined. Both claims are now DERIVED from `tokens.json`,
+// or reported as unknown.
 import { join } from 'node:path';
 import { readJSON, readText, writeText, writeJSON, odDesignSystemDir, odDataRoot, arg } from './_lib.js';
 

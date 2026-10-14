@@ -52,9 +52,10 @@ if (!existsSync(srcAbs)) fail(`[ZERO_MATCH] no html/source found — srcDir miss
 
 // The copy set IS the upload: Open Design receives every non-dot file the build
 // writes. `srcDir` absent therefore means "ship the repo root", which is almost
-// never what anyone means — a real project copied .venv, source backups and data
-// dumps that way (15,000+ files). Warn while the fix is still one config key, and
-// again if the resulting copy is large, because by then only `exclude` can save it.
+// never what anyone means — a repo root drags in virtualenvs, source backups and
+// data dumps, five figures of files that are not the site. Warn while the fix is
+// still one config key, and again if the copy is large, because by then only
+// `exclude` can save it.
 if (!cfg.srcDir) {
   console.warn(`[SRCDIR_UNSET] cfg.srcDir is not set — copying the whole of ${srcAbs}.`);
   console.warn('              Set srcDir in .design-sync/config.json to the directory that holds the site,');

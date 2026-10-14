@@ -20,8 +20,8 @@ record what this implementation changed; everything it inherited came across ess
 - **The drift check died on a TypeError instead of checking anything.** `ods-manifest.js` read its
   ledger with `readJSON(mf, { pairs: [] })`, which falls back only when the file is missing or is
   invalid JSON. A `manifest.json` that *parses* but is not a ledger reached `for (const p of data.pairs)`
-  and threw `data.pairs is not iterable` — the real failure was a stray `{"error":"query_timeout"}` left
-  in a project's `.design-sync/manifest.json`. The loader now validates the shape and exits **2** with
+  and threw `data.pairs is not iterable` — so a ledger with an error payload written over it did not fail
+  the check, it killed it. The loader now validates the shape and exits **2** with
   `[MANIFEST_CORRUPT]` plus the key it found instead of `pairs`; `{}` and a bare array still read as an
   empty/pairs ledger. Exit status is now: `0` clean, `1` drift (a vanished file counts, and says
   `missing`), `2` unusable — so "I could not check" can never read as "nothing changed".
@@ -44,12 +44,13 @@ record what this implementation changed; everything it inherited came across ess
   arguments with a private `process.argv.indexOf(k)`, which only understands `--key value` split across
   two array entries. A caller without a shell (a tool passing an `args` array, a `spawn` without
   `shell: true`, an agent that quoted the whole command line) delivers the command as one entry, the flag
-  is invisible, and the script falls back to its default — which is how a real project came to be named
-  `project`. All 14 scripts now share one `arg()`/`argValue()` in `_lib.js` that reads `--key value`,
-  `--key=value` and a joined quoted entry. `ods-init.js` also treats an explicit `--project` as
-  authoritative on a re-sync (updating `projectName` while preserving `projectId` and every other field),
-  keeps the recorded name when the flag is absent instead of rewriting `STATE.json` from the placeholder,
-  and warns on stderr when it is about to use the generic fallback.
+  is invisible, and the script falls back to its default — which is how a project comes to be named
+  `project` while the caller passed a proper name. All 14 scripts now share one `arg()`/`argValue()` in
+  `_lib.js` that reads `--key value`, `--key=value` and a joined quoted entry. `ods-init.js` also treats
+  an explicit `--project` as authoritative on a re-sync (updating `projectName` while preserving
+  `projectId` and every other field), keeps the recorded name when the flag is absent instead of
+  rewriting `STATE.json` from the placeholder, and warns on stderr when it is about to use the generic
+  fallback.
 - **`ods-build.js` demanded a `--config` path the init phase never created.** It now defaults to
   `<root>/.design-sync/config.json` — the file `ods-init.js` writes — so a bootstrapped repo builds with
   `--root` and `--out` alone; an explicit `--config` still wins, so `ods-resync.js` and every documented
@@ -62,17 +63,27 @@ record what this implementation changed; everything it inherited came across ess
   generically-named project is never invented behind the caller's back.
 - **The copy set is now visible before it becomes an upload.** `ods-build.js` reports what it copied
   (`N pages, M files (X MB)`) and warns twice: `[SRCDIR_UNSET]` when `cfg.srcDir` is absent — the default
-  is the **repo root**, which is how a real project came to copy 15,000+ files, its virtualenv included —
+  is the **repo root**, so a virtualenv, source backups and data dumps all become part of the upload —
   and `[BIG_COPY]` above 1,500 files, with the size. Settling `srcDir`/`exclude`/`entry` is now an
   explicit step in `references/00-bootstrap.md`, `references/05-build.md` and the SKILL.md 05 gate, with
   the two facts that do the damage spelled out: `exclude` matches **exact basenames at any depth and has
   no globs**, and all three keys feed the `global` component in `_hashes.js`, so pinning them after a
   build invalidates every hash and forces a full re-upload.
 
+### Removed
+
+- **`commands/sync-dsh.md`** — the markdown slash command of the host this port replaces. DeepSeek
+  Harness registers `/sync` natively (`ctx.commands.register`), so the file was unreachable, unshipped
+  (`package.json` `files` never listed it) and free to drift out of step with the pipeline it described.
+- **`references/agent-system-prompt.md`** — an agent prompt written for the previous host: it told the
+  agent to call `/sync-dsh`, a command this bundle does not provide, and restated a behavioural contract
+  `SKILL.md` already owns. Unreferenced by every other file in the repo. Both deletions are recorded here
+  because the content remains in git history.
+
 ### Tests
 
 - 134 tests (was 98): the shared argument parser (including a flag hidden inside a joined entry), the
-  ledger's three exit statuses against the exact clobbered file, `--project` in all three spellings, the
+  ledger's three exit statuses against a non-ledger manifest, `--project` in all three spellings, the
   defaulted build config, the copy-set warnings, the absent/overlapping `dark` set, and the harness
   bootstrap path. `test/ds.test.js` was rewritten around truthfulness and fails 6-of-8 against the
   previous generator.

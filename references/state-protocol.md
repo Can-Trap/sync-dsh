@@ -58,8 +58,8 @@ and detect movement with `ods-manifest.js drift`.
 | `2` | the ledger itself is unusable — not JSON, not a ledger, or a one-sided pair. Prints `[MANIFEST_CORRUPT]` and the key it found instead of `pairs` |
 
 A `2` must never be read as `0`: "I could not check" is not "nothing changed". If a stray write
-clobbers `manifest.json` (a failed query once left `{"error":"query_timeout"}` in one), delete the
-file — an absent ledger reads as empty — and re-record the pairs with `add --pair`.
+clobbers `manifest.json` (a failed query can leave an error payload in it), delete the file — an
+absent ledger reads as empty — and re-record the pairs with `add --pair`.
 
 ## The unit of work: one task → one report → flip the box
 

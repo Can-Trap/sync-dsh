@@ -82,7 +82,7 @@ Two modes, kept SEPARATE. Default when the request does not clearly say = **BOTH
 |---|---|---|
 | "design system", "DESIGN.md", "tokens", "extract tokens", "just the DS" — and NOT project words | any | **B** |
 | "project", "sync codebase", "upload", "OD project", "pages", "od-bundle" — and NOT DS-only words | any | **A** |
-| "sync-dsh", "/sync-dsh", "both", "everything", OR nothing specific | any | **BOTH** |
+| "sync-dsh", "/sync", "both", "everything", OR nothing specific | any | **BOTH** |
 | conflicting/ambiguous | any | **BOTH** (default; never guess narrower) |
 
 `config.shape` (`static` / `app`) does NOT change the mode — it only informs how pages map in 05.

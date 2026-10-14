@@ -94,13 +94,13 @@ test('ods-init --project is authoritative on a re-sync, and every other field su
   cfg.exclude = ['e2e'];
   writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n');
 
-  initRaw(dir, '--project', 'Stadtwerke FFB Dashboard Design System');
+  initRaw(dir, '--project', 'Acme Reporting Dashboard');
 
   const after = JSON.parse(readFileSync(cfgPath, 'utf8'));
-  assert.equal(after.projectName, 'Stadtwerke FFB Dashboard Design System', 'a name correction must persist');
+  assert.equal(after.projectName, 'Acme Reporting Dashboard', 'a name correction must persist');
   assert.equal(after.projectId, 'od-123', 'never drop the pin');
   assert.deepEqual(after.exclude, ['e2e'], 'never re-derive a paid-for decision');
-  assert.equal(JSON.parse(readFileSync(join(dir, '.design-sync', 'STATE.json'), 'utf8')).project, 'Stadtwerke FFB Dashboard Design System');
+  assert.equal(JSON.parse(readFileSync(join(dir, '.design-sync', 'STATE.json'), 'utf8')).project, 'Acme Reporting Dashboard');
 });
 
 test('ods-init without --project keeps the name on record instead of resetting it', () => {
@@ -121,9 +121,9 @@ test('ods-init reads --project however the caller spelled it', () => {
 
   // One joined argv entry — what a caller without a shell hands over.
   const b = mkdtempSync(join(tmpdir(), 'ods-'));
-  initRaw(b, '--project "Stadtwerke FFB Dashboard Design System" --mode both');
+  initRaw(b, '--project "Acme Reporting Dashboard" --mode both');
   const cfgB = JSON.parse(readFileSync(join(b, '.design-sync', 'config.json'), 'utf8'));
-  assert.equal(cfgB.projectName, 'Stadtwerke FFB Dashboard Design System');
+  assert.equal(cfgB.projectName, 'Acme Reporting Dashboard');
   assert.equal(cfgB.mode, 'both');
 });
 

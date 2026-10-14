@@ -92,16 +92,16 @@ test("status reads an initialised project's next phase", async () => {
 
 test("status bootstraps a fresh project when it is given a projectName", async () => {
   // `projectName` documents itself as the name ods-init.js bootstraps with, so it
-  // must actually do it: printing a hint and dropping the argument is how a real
-  // project ended up named "project" with nothing recording the name asked for.
+  // must actually do it: printing a hint and dropping the argument is how a project
+  // ends up named "project" with nothing recording the name asked for.
   const { tool } = await loadPlugin();
   const dir = project({ bootstrapped: false });
   const value = await tool.execute(
-    { operation: "status", directory: dir, projectName: "Stadtwerke FFB Dashboard", mode: "B" }, {});
+    { operation: "status", directory: dir, projectName: "Acme Reporting Dashboard", mode: "B" }, {});
 
   assert.equal(value.ok, true);
-  assert.equal(JSON.parse(readFileSync(join(dir, ".design-sync", "config.json"), "utf8")).projectName, "Stadtwerke FFB Dashboard");
-  assert.equal(JSON.parse(readFileSync(join(dir, ".design-sync", "STATE.json"), "utf8")).project, "Stadtwerke FFB Dashboard");
+  assert.equal(JSON.parse(readFileSync(join(dir, ".design-sync", "config.json"), "utf8")).projectName, "Acme Reporting Dashboard");
+  assert.equal(JSON.parse(readFileSync(join(dir, ".design-sync", "STATE.json"), "utf8")).project, "Acme Reporting Dashboard");
   assert.match(value.nextPhase, /01-detect/, "the phase comes from the state just seeded");
   assert.match(value.stdout, /ods-init\.js/);
 });

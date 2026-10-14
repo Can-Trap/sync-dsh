@@ -4,8 +4,8 @@
 // so its exit status is the contract: 0 clean, 1 drift, 2 the ledger is unusable.
 // The overlap between 0 and 2 is the whole point — "I could not check" must never
 // read as "nothing changed". It did: a manifest that parses but is not a ledger
-// (`{"error":"query_timeout"}` was found in a real project) reached
-// `for (const p of data.pairs)` and threw `TypeError: data.pairs is not iterable`.
+// (an error payload written over it, say) reached `for (const p of data.pairs)`
+// and threw `TypeError: data.pairs is not iterable`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -47,7 +47,8 @@ test('add accepts --pair=<a>::<b> as well as --pair <a>::<b>', () => {
 });
 
 test('a manifest that is not a ledger is exit 2 with a diagnosis, not a TypeError', () => {
-  // The exact file a real project had, and the exact crash it caused.
+  // A file that parses — an error payload written over the ledger, say — used to
+  // crash the check instead of failing it.
   const d = project({ error: 'query_timeout' });
   const r = run(d, 'drift');
   assert.equal(r.status, 2, 'an unreadable ledger must not report "clean" (0) or "drift" (1)');

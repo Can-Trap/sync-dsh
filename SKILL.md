@@ -1,6 +1,6 @@
 ---
 name: sync-dsh
-description: "Sync any codebase to your self-hosted Open Design MCP AND/OR extract its design system, script-driven so even a weak local model runs the whole pipeline one bite-sized phase at a time — build a local od-bundle/ of OD-safe pages, upload via an agent-bridged plan (anchor last), grade light+dark, pull designer edits back through managed blocks. Triggers: sync-dsh, /sync-dsh, sync codebase to Open Design, create OD project/design system for a weak model."
+description: "Sync any codebase to your self-hosted Open Design MCP AND/OR extract its design system, script-driven so even a weak local model runs the whole pipeline one bite-sized phase at a time — build a local od-bundle/ of OD-safe pages, upload via an agent-bridged plan (anchor last), grade the variants the source actually defines, pull designer edits back through managed blocks. Triggers: sync-dsh, /sync, sync codebase to Open Design, create OD project/design system for a weak model."
 license: MIT
 metadata:
   author: Trap

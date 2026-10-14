@@ -29,10 +29,11 @@ const REBUILD_HINT = [
  * This used to be `readJSON(mf, { pairs: [] })`, which falls back only when the
  * file is MISSING or is invalid JSON. A manifest that parses but is not a ledger
  * came back as-is, and `for (const p of data.pairs)` then threw
- * `TypeError: data.pairs is not iterable` — which is exactly what happened to a
- * real project whose `.design-sync/manifest.json` held `{"error":"query_timeout"}`.
- * The drift check, the one thing standing between a hand-edited page and a bad
- * upload, died on a TypeError instead of checking anything.
+ * `TypeError: data.pairs is not iterable` — so a ledger overwritten with an error
+ * payload did not fail the check, it killed it. The drift check is the one thing
+ * standing between a hand-edited page and a bad upload, and a crash is the worst
+ * of the three possible outcomes: it reads as a broken tool rather than as a
+ * verdict about the project.
  *
  * A corrupt ledger stays LOUD: silently falling back to `{pairs: []}` here would
  * print "clean" for a project whose pairs were just lost — the precise failure

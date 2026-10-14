@@ -27,7 +27,7 @@ full re-upload.
 
 | Key | What it decides | The trap |
 |---|---|---|
-| `srcDir` | the directory the bundle is copied from | absent ⇒ the **repo root**. That drags in virtualenvs, source backups, data dumps and logs — one real project copied 15,000 files that way. `[SRCDIR_UNSET]` warns. |
+| `srcDir` | the directory the bundle is copied from | absent ⇒ the **repo root**. That drags in virtualenvs, source backups, data dumps and logs, none of which are the site. `[SRCDIR_UNSET]` warns. |
 | `exclude` | basenames dropped from the copy | **exact basenames, matched at any depth — there are no globs.** `"latest_data.json"` works; `"*.json"` does nothing. To drop a whole directory, name the directory. |
 | `entry` | the page `ods-validate.js` treats as the entry (default `index.html`) | if the real home page is e.g. `betrieb.html`, say so. Otherwise validate checks a file the build invented, and `[RUNTIME_MISSING]` fires against the placeholder instead of your page. |
 

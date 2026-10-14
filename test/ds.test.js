@@ -42,8 +42,8 @@ function design({ tokens, id = 'demo-ds', name = 'Demo', signals, extra = [] }) 
 const CAPABILITIES = ['## Color Palette & Roles', '## Theme', '## Links', '## Navigation', '## Effects & Motion'];
 
 test('a dark set identical to light is reported as single-theme, never as a dark mode', () => {
-  // The shape a real project extracts when the source has no dark block: the
-  // extractor emits `dark` as a copy of `light`.
+  // The shape the extractor emits when the source has no dark block: it writes
+  // `dark` as a copy of `light`.
   const light = { page: '#f3f6f8', ink: '#142b3b', 'tblr-body-bg': 'var(--page)' };
   const { md } = design({ tokens: { light: { color: light }, dark: { color: { ...light } } } });
 
